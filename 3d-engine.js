@@ -14,10 +14,10 @@ const GRID_HEIGHT = 5;
 const FOCAL = 300;
 
 let camera = {
-  x: 0,
-  y: 0,
-  z: 0,
-  yaw: Math.PI - 0.01,
+  x: 3.55,
+  y: 5,
+  z: -4,
+  yaw: -0.60,
   pitch: 0
 };
 
@@ -378,6 +378,24 @@ function toCanvasCoords(p) {
    DRAWING
 ========================= */
 
+function drawDebugText() {
+  const lines = [
+    `pos: (${camera.x.toFixed(2)}, ${camera.y.toFixed(2)}, ${camera.z.toFixed(2)})`,
+    `yaw: ${camera.yaw.toFixed(2)}`,
+    `pitch: ${camera.pitch.toFixed(2)}`
+  ];
+
+  ctx.fillStyle = "rgba(255,255,255,0.8)";
+  ctx.fillRect(5, 5, 200, lines.length * 18);
+
+  ctx.fillStyle = "black";
+  ctx.font = "14px monospace";
+
+  for (let i = 0; i < lines.length; i++) {
+    ctx.fillText(lines[i], 10, 20 + i * 16);
+  }
+}
+
 function clearCanvas(color = "black") {
   ctx.fillStyle = color;
   ctx.fillRect(0, 0, WIDTH, HEIGHT);
@@ -515,6 +533,7 @@ function updateCamera() {
 function render() {
   clearCanvas("white");
   drawMesh(mesh, camera, FOCAL, "lime");
+  drawDebugText();
 }
 
 function loop() {
@@ -523,7 +542,7 @@ function loop() {
   requestAnimationFrame(loop);
 }
 
-loadGLBAsMesh("./untitled.glb", (loadedMesh) => {
+loadGLBAsMesh("./realistic_tree_min2.glb", (loadedMesh) => {
   mesh = loadedMesh;
 
   console.log("Loaded points:", mesh.points.length);
