@@ -3,24 +3,38 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Simple 3D Canvas</title>
+  <title>WebGL GLB Viewer</title>
   <style>
     html, body {
       margin: 0;
       padding: 0;
-      background: #111;
       overflow: hidden;
+      background: #111;
     }
 
     canvas {
       display: block;
-      margin: 0 auto;
-      background: #000;
+      width: 100vw;
+      height: 100vh;
+    }
+
+    #debug {
+      position: fixed;
+      top: 8px;
+      left: 8px;
+      padding: 8px 10px;
+      background: rgba(255,255,255,0.85);
+      color: #000;
+      font: 12px/1.4 monospace;
+      white-space: pre;
+      z-index: 10;
+      border-radius: 4px;
     }
   </style>
 </head>
 <body>
   <canvas id="canvas"></canvas>
+  <div id="debug"></div>
   <script type="module" src="./3d-engine.js"></script>
 </body>
 </html>
