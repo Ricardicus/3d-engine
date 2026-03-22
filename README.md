@@ -72,6 +72,11 @@ it means:
 I thought this was a bit curious. Apparently, OpenGL is a 1990s design, and back then state machines were common
 and minimizing function arguments was also something considered important.
 
+## Other examples
+
+You can run some examples also, found under "examples". Right now that is not really deserving of a pluralis, there is 
+a single one where a set of rectangles vary their lengths using webGL shaders, it is live here: [https://me.ricardicus.se/64d743bdb2dfa8deb170784f771313b8](https://me.ricardicus.se/64d743bdb2dfa8deb170784f771313b8).
+
 ### Screenshot
 
 You can navigate the word by moving the camera using the arrows (direction) and the W-A-S-D keys for moving forward-left(stride)-back-right(stride).
