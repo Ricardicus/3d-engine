@@ -380,7 +380,7 @@ function createWebGLTextureFromImage(gl, image) {
   const texture = gl.createTexture();
   gl.bindTexture(gl.TEXTURE_2D, texture);
 
-  gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+  gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
 
   gl.texImage2D(
     gl.TEXTURE_2D,
