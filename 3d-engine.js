@@ -53,6 +53,13 @@ let gpuDrawables = [];
 let groupRotationY = 0;
 
 /* =========================
+   LOADING STATE
+========================= */
+
+let isLoading = true;
+let loadingText = "Loading...";
+
+/* =========================
    SHADERS
 ========================= */
 
@@ -199,15 +206,6 @@ function makeLookAtViewMatrix(cam) {
   ]);
 }
 
-function makeIdentityMatrix() {
-  return new Float32Array([
-    1, 0, 0, 0,
-    0, 1, 0, 0,
-    0, 0, 1, 0,
-    0, 0, 0, 1
-  ]);
-}
-
 function makeTranslationMatrix(tx, ty, tz) {
   return new Float32Array([
     1, 0, 0, 0,
@@ -229,7 +227,6 @@ function makeRotationYMatrix(angle) {
   ]);
 }
 
-// Column-major 4x4 multiply, suitable for WebGL matrices.
 function multiplyMatrices(a, b) {
   const out = new Float32Array(16);
 
@@ -335,12 +332,18 @@ function updateCamera(dt) {
 function updateDebug() {
   if (!debugEl) return;
 
-  debugEl.textContent =
+  let text =
     `pos:   (${camera.x.toFixed(2)}, ${camera.y.toFixed(2)}, ${camera.z.toFixed(2)})\n` +
     `yaw:   ${camera.yaw.toFixed(2)}\n` +
     `pitch: ${camera.pitch.toFixed(2)}\n` +
     `meshes: ${gpuDrawables.length}\n` +
     `group rot y: ${groupRotationY.toFixed(2)}`;
+
+  if (isLoading) {
+    text += `\n${loadingText}`;
+  }
+
+  debugEl.textContent = text;
 }
 
 /* =========================
@@ -519,7 +522,6 @@ function computeGroupCenter(drawables) {
   let count = 0;
 
   for (const d of drawables) {
-    // Translation is in elements 12,13,14 in column-major mat4
     sx += d.localModel[12];
     sy += d.localModel[13];
     sz += d.localModel[14];
@@ -538,6 +540,9 @@ let groupCenter = { x: 0, y: 0, z: 0 };
 function loadGLBToGpu(url, onLoaded) {
   const loader = new GLTFLoader();
 
+  isLoading = true;
+  loadingText = "Loading...";
+
   loader.load(
     url,
     (gltf) => {
@@ -554,10 +559,22 @@ function loadGLBToGpu(url, onLoaded) {
         }
       });
 
+      isLoading = false;
+      loadingText = "Loaded";
+
       onLoaded(drawables);
     },
-    undefined,
+    (xhr) => {
+      if (xhr.total) {
+        const percent = ((xhr.loaded / xhr.total) * 100).toFixed(1);
+        loadingText = `Loading... ${percent}%`;
+      } else {
+        loadingText = `Loading... ${Math.round(xhr.loaded / 1024)} KB`;
+      }
+    },
     (error) => {
+      isLoading = false;
+      loadingText = "Failed to load GLB";
       console.error("Failed to load GLB:", error);
     }
   );
@@ -603,6 +620,10 @@ function makeGroupModelMatrix() {
 function drawScene() {
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
+  if (gpuDrawables.length === 0) {
+    return;
+  }
+
   const aspect = canvas.width / canvas.height;
   const projection = makePerspectiveMatrix(Math.PI / 3, aspect, 0.1, 1000);
   const view = makeLookAtViewMatrix(camera);
@@ -628,8 +649,9 @@ function loop(timeMs) {
   resizeCanvas();
   updateCamera(dt);
 
-  // slight continuous rotation of the whole loaded object
-  groupRotationY += dt * 0.05;
+  if (!isLoading) {
+    groupRotationY += dt * 0.05;
+  }
 
   updateDebug();
   drawScene();
