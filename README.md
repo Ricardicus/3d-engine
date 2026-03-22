@@ -4,7 +4,7 @@ I had no previous experience in the theoretical back bone of 3d modelling really
 person I had a series of questions about it and it eventually led me to
 this rudimentary 3d engine implementation. 
 
-You can find a demo of it here: [me.ricardicus.se/6327c5040352eadd45ae679f31f8f38](me.ricardicus.se/6327c5040352eadd45ae679f31f8f38a)
+You can find a demo of it here: [https://me.ricardicus.se/6327c5040352eadd45ae679f31f8f38](https://me.ricardicus.se/6327c5040352eadd45ae679f31f8f38a)
 or launch it locally with for example
 
 ```
