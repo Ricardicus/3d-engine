@@ -1,6 +1,3 @@
-import * as THREE from "./three.module.js";
-import { GLTFLoader } from "./GLTFLoader.js";
-
 const canvas = document.getElementById("canvas");
 const debugEl = document.getElementById("debug");
 const gl = canvas.getContext("webgl");
