@@ -1,4 +1,4 @@
-# 3d engine
+# 3d engine building
 
 I had no previous experience in the theoretical back bone of 3d modelling really, but as a curious
 person I had a series of questions about it and it eventually led me to
