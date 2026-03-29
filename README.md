@@ -375,4 +375,8 @@ You can run some examples also, found under "examples".
 You can navigate the word by moving the camera using the arrows (direction) and the W-A-S-D keys for moving forward-left(stride)-back-right(stride).
 I took this screenshot:
 
-![Preview](localhost_8000_.png)
+![Preview- tree](localhost_8000_.png)
+
+The HalfLife GoldSrc map loading, here is the map de_dust2, a mod for Counter-Strike:
+
+![Preview- HalfLife GoldSrc BSP&WAD](webgl_de_dust2.png)
