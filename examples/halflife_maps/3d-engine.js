@@ -68,6 +68,7 @@ let omega = 0.0;
 let baseColor = [1.0, 0.0, 0.0];
 let lightDir = [1.0, 1.5, 0.8];
 let jumpRequested = false;
+let skybox = null;
 
 /* =========================
    MOUSE LOOK
@@ -114,6 +115,36 @@ let loadingBytesLoaded = 0;
 let loadingBytesTotal = 0;
 let loadingCurrentFileLoaded = 0;
 let loadingCurrentFileTotal = 0;
+
+/* =========================
+   SKYBOX SHADER
+========================= */
+
+const skyboxVS = `
+attribute vec3 aPosition;
+attribute vec2 aUv;
+
+uniform mat4 uProjection;
+uniform mat4 uView;
+
+varying vec2 vUv;
+
+void main() {
+  vUv = aUv;
+  vec4 pos = uProjection * uView * vec4(aPosition, 1.0);
+  gl_Position = pos.xyww;
+}
+`;
+
+const skyboxFS = `
+precision mediump float;
+varying vec2 vUv;
+uniform sampler2D uTexture;
+
+void main() {
+  gl_FragColor = texture2D(uTexture, vUv);
+}
+`;
 
 /* =========================
    SHADERS
@@ -215,6 +246,17 @@ const uniforms = {
   baseColor: gl.getUniformLocation(program, "uBaseColor"),
   texture: gl.getUniformLocation(program, "uTexture"),
   useTexture: gl.getUniformLocation(program, "uUseTexture"),
+};
+
+const skyboxProgram = createProgram(gl, skyboxVS, skyboxFS);
+const skyboxAttribs = {
+  position: gl.getAttribLocation(skyboxProgram, "aPosition"),
+  uv: gl.getAttribLocation(skyboxProgram, "aUv"),
+};
+const skyboxUniforms = {
+  projection: gl.getUniformLocation(skyboxProgram, "uProjection"),
+  view: gl.getUniformLocation(skyboxProgram, "uView"),
+  texture: gl.getUniformLocation(skyboxProgram, "uTexture"),
 };
 
 /* =========================
@@ -904,7 +946,7 @@ function updateDebug() {
   if (isLoading) {
     const barW = 20;
     const filled = Math.round(loadingProgress * barW);
-    const bar = "\u2588".repeat(filled) + "\u2591".repeat(barW - filled);
+    const bar = "\u2588".repeat(filled) + ".".repeat(barW - filled);
     const pct = (loadingProgress * 100).toFixed(0);
     text += `\n${loadingText}\n[${bar}] ${pct}%`;
 
@@ -943,7 +985,7 @@ function updateDebug() {
         } else if (ws.status === "loading" && ws.total > 0) {
           const wPct = ((ws.loaded / ws.total) * 100).toFixed(0);
           const wFilled = Math.round((ws.loaded / ws.total) * 10);
-          const wBar = "\u2588".repeat(wFilled) + "\u2591".repeat(10 - wFilled);
+          const wBar = "\u2588".repeat(wFilled) + ".".repeat(10 - wFilled);
           info = ` [${wBar}] ${wPct}% (${fmtBytes(ws.loaded)}/${fmtBytes(ws.total)})`;
         } else if (ws.status === "loading") {
           info = ` (${fmtBytes(ws.loaded)}...)`;
@@ -1376,14 +1418,49 @@ function makeGroupModelMatrix() {
   return multiplyMatrices(back, multiplyMatrices(rotation, toOrigin));
 }
 
+function drawSkybox(projection) {
+  if (!skybox) return;
+
+  const skyView = makeLookAtViewMatrix({ x: 0, y: 0, z: 0, yaw: camera.yaw, pitch: camera.pitch });
+
+  gl.useProgram(skyboxProgram);
+  gl.depthMask(false);
+  gl.depthFunc(gl.LEQUAL);
+
+  gl.uniformMatrix4fv(skyboxUniforms.projection, false, projection);
+  gl.uniformMatrix4fv(skyboxUniforms.view, false, skyView);
+
+  for (const face of skybox.faces) {
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, face.texture);
+    gl.uniform1i(skyboxUniforms.texture, 0);
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, face.posBuffer);
+    gl.enableVertexAttribArray(skyboxAttribs.position);
+    gl.vertexAttribPointer(skyboxAttribs.position, 3, gl.FLOAT, false, 0, 0);
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, face.uvBuffer);
+    gl.enableVertexAttribArray(skyboxAttribs.uv);
+    gl.vertexAttribPointer(skyboxAttribs.uv, 2, gl.FLOAT, false, 0, 0);
+
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, face.idxBuffer);
+    gl.drawElements(gl.TRIANGLES, face.idxCount, gl.UNSIGNED_SHORT, 0);
+  }
+
+  gl.depthMask(true);
+  gl.depthFunc(gl.LEQUAL);
+}
+
 function drawScene() {
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-  if (gpuDrawables.length === 0) {
-    return;
-  }
 
   const aspect = canvas.width / canvas.height;
   const projection = makePerspectiveMatrix(Math.PI / 3, aspect, 1, 50000);
+
+  drawSkybox(projection);
+
+  if (gpuDrawables.length === 0) return;
+
   const view = makeLookAtViewMatrix(camera);
   gl.useProgram(program);
 
@@ -1403,10 +1480,12 @@ function loop(timeMs) {
   lastTime = timeMs;
 
   resizeCanvas();
-  updatePlayer(dt);
 
-  omega += (dt * 2.5) % (4 * Math.PI);
+  if (!isLoading) {
+    updatePlayer(dt);
 
+    omega += (dt * 2.5) % (4 * Math.PI);
+  }
   updateDebug();
   drawScene();
 
@@ -1467,6 +1546,142 @@ function generateProceduralTexture(name, width, height) {
 /* =========================
    BSP MAP LOADING
 ========================= */
+
+/* --- Skybox helpers --- */
+
+function loadImage(url) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error("Failed to load image: " + url));
+    img.src = url;
+  });
+}
+
+function createTextureFromImage(gl, img) {
+  const tex = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, tex);
+  gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  return tex;
+}
+
+function buildSkyboxFace(gl, positions, uvs) {
+  const posBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, posBuffer);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
+
+  const uvBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, uvBuffer);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(uvs), gl.STATIC_DRAW);
+
+  const idxBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, idxBuffer);
+  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array([0,1,2, 0,2,3]), gl.STATIC_DRAW);
+
+  return { posBuffer, uvBuffer, idxBuffer, idxCount: 6 };
+}
+
+async function loadSkybox(gl, basePath, skyName) {
+  const S = 1.0;
+  const suffixes = ["ft", "bk", "lf", "rt", "up", "dn"];
+
+  function caseVariants(name) {
+    return [
+      //name,
+      name[0].toUpperCase() + name.slice(1),
+      //name.toUpperCase(),
+      //name.toLowerCase(),
+    ];
+  }
+
+  const images = {};
+  for (const suf of suffixes) {
+    let loaded = false;
+    for (const variant of caseVariants(skyName)) {
+      for (const ext of [".bmp", ".tga"]) {
+        try {
+          images[suf] = await loadImage(basePath + variant + suf + ext);
+          loaded = true;
+          break;
+        } catch {}
+      }
+      if (loaded) break;
+    }
+    if (!loaded) {
+      console.warn("Skybox face missing:", skyName + suf);
+      return null;
+    }
+  }
+
+  // GoldSrc skybox conventions:
+  // The skybox is viewed from INSIDE looking outward.
+  // GoldSrc coords: X=right, Y=forward, Z=up
+  // Engine coords:  X=right, Y=up,      Z=forward
+  // Mapping: GoldSrc(X,Y,Z) -> Engine(X,Z,Y)
+  //
+  // ft = forward (+Y in GoldSrc = -Z in engine, because our camera looks -Z)
+  // bk = backward
+  // lf = left (-X in GoldSrc)
+  // rt = right (+X in GoldSrc)
+  // up = up (+Z in GoldSrc = +Y in engine)
+  // dn = down (-Z in GoldSrc = -Y in engine)
+  //
+  // Each face is a quad (4 vertices), wound CCW when viewed from inside.
+  // UV (0,0) = top-left of the image, (1,1) = bottom-right.
+  // BMP is loaded with FLIP_Y so the Image already has (0,0) at top-left.
+
+  const faceData = {
+    ft: {
+      pos: [ S, S, -S,  -S, S, -S,  -S,-S, -S,   S,-S, -S ],
+      uv:  [ 0, 1,  1, 1,  1, 0,  0, 0 ],
+    },
+    bk: {
+      pos: [-S, S,  S,   S, S,  S,   S,-S,  S,  -S,-S,  S ],
+      uv:  [ 0, 1,  1, 1,  1, 0,  0, 0 ],
+    },
+    lf: {
+      pos: [-S, S, -S,  -S, S,  S,  -S,-S,  S,  -S,-S, -S ],
+      uv:  [ 0, 1,  1, 1,  1, 0,  0, 0 ],
+    },
+    rt: {
+      pos: [ S, S,  S,   S, S, -S,   S,-S, -S,   S,-S,  S ],
+      uv:  [ 0, 1,  1, 1,  1, 0,  0, 0 ],
+    },
+    up: {
+      pos: [-S, S,  S,   S, S,  S,   S, S, -S,  -S, S, -S ],
+      uv:  [ 0, 0,  1, 0,  1, 1,  0, 1 ],
+    },
+    dn: {
+      pos: [-S,-S, -S,   S,-S, -S,   S,-S,  S,  -S,-S,  S ],
+      uv:  [ 0, 1,  1, 1,  1, 0,  0, 0 ],
+    },
+  };
+
+  const faces = [];
+  for (const suf of suffixes) {
+    const tex = createTextureFromImage(gl, images[suf]);
+    const fd = faceData[suf];
+    const face = buildSkyboxFace(gl, fd.pos, fd.uv);
+    face.texture = tex;
+    faces.push(face);
+  }
+
+  console.log("Skybox loaded:", skyName);
+  return { faces };
+}
+
+function parseSkyNameFromEntities(entityString) {
+  const match = entityString.match(/"sky"\s+"([^"]+)"/i);
+  if (match) return match[1];
+  const match2 = entityString.match(/"skyname"\s+"([^"]+)"/i);
+  if (match2) return match2[1];
+  return null;
+}
 
 function hashColor(str) {
   let h = 0;
@@ -1723,6 +1938,17 @@ async function loadBspMap(url, wadUrls) {
   loadingText = "Building BVH...";
   collisionBVH = buildBVH(collisionTriangles);
   loadingProgress = step / totalSteps + 0.9 / totalSteps;
+
+  // Load skybox
+  loadingText = "Loading skybox...";
+  const skyName = parseSkyNameFromEntities(bsp.entities);
+  const basePath = url.substring(0, url.lastIndexOf("/") + 1);
+  if (skyName) {
+    try { skybox = await loadSkybox(gl, basePath, skyName); } catch (e) { console.warn("Skybox load failed:", e.message); }
+  } else {
+    console.log("No sky name found in entities, trying 'Des'...");
+    try { skybox = await loadSkybox(gl, basePath, "Des"); } catch (e) { console.warn("Fallback skybox failed:", e.message); }
+  }
 
   player.position.x = 317.70;
   player.position.y = 12.51;
