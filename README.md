@@ -365,8 +365,10 @@ and minimizing function arguments was also something considered important.
 
 ## Other examples
 
-You can run some examples also, found under "examples". Right now that is not really deserving of a pluralis, there is 
-a single one where a set of rectangles vary their lengths using webGL shaders, it is live here: [https://me.ricardicus.se/64d743bdb2dfa8deb170784f771313b8](https://me.ricardicus.se/64d743bdb2dfa8deb170784f771313b8).
+You can run some examples also, found under "examples". 
+
+- a set of rectangles vary their lengths using webGL shaders, it is live here: [https://me.ricardicus.se/64d743bdb2dfa8deb170784f771313b8](https://me.ricardicus.se/64d743bdb2dfa8deb170784f771313b8).
+- walking around in a Half-Life mod map called "de\_dust2" (GoldSrc BSP & WAD), it is live here: [https://me.ricardicus.se/64d743bdb2dfa8deb170784f771313b8](https://me.ricardicus.se/ee259790f841fbda5c5e65c5d85000a7]
 
 ### Screenshot
 

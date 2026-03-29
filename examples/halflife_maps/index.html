@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GoldSrc BSP Viewer</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #1a1a1a; color: #eee; font-family: monospace; overflow: hidden; }
+    canvas { display: block; width: 100vw; height: 100vh; }
+    #debug {
+      position: absolute; top: 10px; left: 10px;
+      background: rgba(0,0,0,0.7); padding: 8px 12px; border-radius: 4px;
+      font-size: 13px; pointer-events: none; white-space: pre;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="canvas"></canvas>
+  <div id="debug">Loading BSP&hellip;</div>
+
+  <script src="goldsrc-bsp-parser.js"></script>
+  <script src="3d-engine.js"></script>
+</body>
+</html>
