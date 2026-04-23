@@ -35,7 +35,7 @@ I also argued that webgl API is a bit old, and it (as it so often does) agreed w
 
 ## Vertices and indices
 
-So, vertices are points. And indices, and indexes to these points.
+So, vertices are points. And indices, are indexes to these points.
 The indices can form shapes based on the points, to explain how they
 form shapes. You can for example draw lines based on the indices, then
 you get a wireframe. Vertexes and indices are the building blocks
@@ -166,7 +166,7 @@ using cross products of the triangles.
 
 ## A matter of perspective
 
-"Is the things small, or just far away?"
+"Is it small, or just far away?"
 
 The notion, x' = x/z, y' = y/z is pretty cool and deserving of 
 a video [Youtube video](https://www.youtube.com/watch?v=qjWkNZ0SXfo).
